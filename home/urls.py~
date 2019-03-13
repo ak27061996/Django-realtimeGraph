@@ -1,0 +1,26 @@
+from django.conf.urls import patterns, include, url
+
+urlpatterns = patterns('',
+        url(r'^$', 'home.views.index', name='root_path'),
+        
+)
+
+# import os.path
+# BASE_PATH = os.path.dirname(__file__)
+# SITE_ROOT = BASE_PATH
+# STATIC_DOC_ROOT = BASE_PATH+'/static'
+
+
+# urlpatterns += patterns('',
+#         (r'^static/(?P<path>.*)$', 'django.views.static.serve', {'document_root': settings.STATIC_DOC_ROOT}),
+#     )
+
+
+
+
+
+
+
+ # url(r'^design/$', 'home.views.design'),
+        # url(r'^welcome/$', 'home.views.welcome'),
+        # url(r'^admin/$', 'home.views.admin'),

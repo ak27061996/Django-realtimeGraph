@@ -1,0 +1,23 @@
+<html>
+ <head>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+ <title>Login</title>
+ </head>
+ <body>
+ <p> <form action='?next={{ next|default:"/" }}' method="post">
+
+ {%csrf_token%}
+
+ Username: <input id="id_username" type="text" name="username" value="admin"/><p>
+ Password: <input id="id_password" type="password" name="password" value="admin" />
+ <br>
+ <input class="ss" type="submit" value="Submit" /></form>
+ <script>
+     $(document).ready(function(){
+         $(".ss").trigger("click");
+         console.log("asdf");
+     });
+ 
+ </script>
+ </body>
+ </html>

@@ -1,0 +1,176 @@
+<div id="data" style="display:none">{{statics}}</div>
+<html>
+<head>
+	 <script src="https://ruris.serveo.net/socket.io/socket.io.js"></script>
+	<script src="https://ruris.serveo.net/client/ishout.client.js"></script>
+        {% load drealtimetags %}
+        {% ishout_js %} 
+        <script type="text/javascript">
+			var volt=[],current=[],time=[];
+			</script>	
+			<div>
+				<a href='#' onclick="deleteme()">Clear Database</a>
+			</div>		
+<script>
+	var x = JSON.parse(document.getElementById("data").textContent); 
+		window.onload = function () {
+		var dps = []; // dataPoints
+		var dps2=[];
+		var dps3=[];
+/*		var chart = new CanvasJS.Chart("chartContainer", {
+			animationEnabled: true,
+			zoomEnabled: true,
+			zoomOutEnabled:true,
+			toolTip:{   
+			content: "<span style='color:blue'>Voltage</span>: {y} <span style='color:green'>Current</span>: {x} <span style='color:red'>Power</span>:{x}*{y},<span style='color:grey'>TimeStamp</span>:{z}"      
+			},
+			showInLegend: true,
+			markerSize: 10,
+			
+			title :{
+				text: "Current Voltage Graph"
+			},
+			axisX: {
+                title: "current"
+            },
+			axisY: {
+				title: "Voltage",
+				includeZero: true
+			},      
+			data: [{
+				type: "line",
+        		color:"#369EAD",
+        		axisXIndex: 0,
+				dataPoints: dps
+			}]
+		});*/
+		var chart2 = new CanvasJS.Chart("chartContainer2", {
+			animationEnabled: true,
+			zoomEnabled: true,
+			zoomOutEnabled:true,
+			toolTip:{   
+			content: "<span style='color:blue'>Voltage</span>: {y} <span style='color:green'>Current</span>: {z} <span style='color:red'>Power</span>:{z}*{y},<span style='color:grey'>TimeStamp</span>:{x}"      
+			},
+			showInLegend: true,
+			markerSize: 10,
+			title :{
+				text: "Voltage Timestamp Graph"
+			},
+			axisX: {
+                title: "TimeStamp",
+				valueFormatString:"##:##:##.##"
+            },
+			axisY: {
+				title: "Voltage",
+				includeZero: true
+			},      
+			data: [{
+				type: "line",
+				xValueFormatString: "##:##:##:##",
+        		color:"#369EAD",
+        		axisXIndex: 0,
+				dataPoints: dps2
+			}]
+		})
+		var chart3 = new CanvasJS.Chart("chartContainer3", {
+			animationEnabled: true,
+			zoomEnabled: true,
+			zoomOutEnabled:true,
+			toolTip:{   
+			content: "<span style='color:blue'>Voltage</span>: {z} <span style='color:green'>Current</span>: {y} <span style='color:red'>Power</span>:{z}*{y},<span style='color:grey'>TimeStamp</span>:{x}"      
+			},
+			showInLegend: true,
+			markerSize: 10,
+			
+			title :{
+				text: "Current TimeStamp Graph"
+			},
+			axisX: {
+                title: "timestamp",
+				valueFormatString:"##:##:##.##"
+            },
+			axisY: {
+				title: "current",
+				includeZero: true
+			},      
+			data: [{
+				type: "line",
+				xValueFormatString: "##:##:##:##",
+        		color:"#369EAD",
+        		axisXIndex: 0,
+				dataPoints: dps3
+			}]
+		})
+		var dataLength=10;
+		volt=x.volt;
+		current=x.current;
+		time=x.time
+		var updateChart = function (count) {
+		
+			count = count || 1;
+		
+			for (var j = 0; j < volt.length; j++) {
+				// dps.push({
+				// 	x: 	current[j],
+				// 	y:  volt[j],
+				// 	z:  time[j]
+				// });
+				dps2.push({
+					x: 	Number(time[j].split(":").join('')),
+					y:  volt[j],
+					z:  current[j]
+				});
+				dps3.push({
+					x: 	Number(time[j].split(":").join('')),
+					y:  current[j],
+					z:  volt[j]
+				});
+			}
+			console.log(dps2,dps3,"adasd");
+			// chart.render();
+			chart2.render();
+			chart3.render();
+		};
+		updateChart(dataLength);
+		ishout.on('notifications', function(data){
+            //    console.log(data);
+				volt=JSON.parse(data.volt);
+				current=JSON.parse(data.current);
+				time=JSON.parse(data.time);
+				updateChart();
+            });
+            ishout.init();
+		}
+
+
+function deleteme(){request("GET",'/clear/','',function(){window.location.href='/';});}
+
+// setInterval(function(){
+// 	deleteme();
+// },120000);
+
+function request(method, url, data, callback) {
+    var req = new XMLHttpRequest();
+    req.onreadystatechange = function () {
+        if (req.readyState === 4 && req.status === 200) {
+            callback(req.responseText);
+        } else if (req.readyState === 4 && req.status !== 200) {
+          console.log(req);   
+         }
+    };
+    req.open(method, url, true);
+    if (method !== 'GET') {
+        req.setRequestHeader('content-type', 'application/json');
+    }
+    req.send(data);
+}
+
+</script>
+		</head>
+		<body>
+		<!-- <div id="chartContainer" style="height: 300px; width: 100%;"></div> -->
+		<div id="chartContainer2" style="height: 300px; width: 100%;"></div>
+		<div id="chartContainer3" style="height: 300px; width: 100%;"></div>
+		<script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+	</body>
+</html>

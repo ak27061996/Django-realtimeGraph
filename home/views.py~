@@ -1,0 +1,252 @@
+from django.shortcuts import render_to_response,render
+from django.template import RequestContext
+from home.models import report
+import math
+import requests
+import os
+import datetime
+
+def index(request):
+    # templateData.objects.filter(uid=123).delete()
+    a=request.session['shopify']
+    data = user.objects.get(shop=a['shop_url'])
+    # if(not data.email):
+    #     return render_to_response('home/setting.html',{},context_instance=RequestContext(request));     
+    stat = statics.objects.filter(user_id=data.id)
+    return render_to_response('home/create.html',{'statics':stat},context_instance=RequestContext(request) ); 
+
+@shop_login_required
+def getadminform(request):
+    a=request.session['shopify']
+    data=user.objects.get(shop=a['shop_url'])
+    # print data.name
+    return render_to_response('home/admininfo.html',{'data':data},context_instance=RequestContext(request) );
+
+@shop_login_required
+def getSaveBasicSetting(request):
+    b=request.session['shopify']
+    a=user.objects.get(shop=b['shop_url'])
+    if request.POST :
+        a.address=request.POST['address']
+        a.email=request.POST['senderEmail']
+        a.name=request.POST['senderName']
+        a.subjectline=request.POST['subjectline']
+        a.save()
+    print request.POST
+    print a.id
+
+
+
+@shop_login_required
+def getadmininfo(request):
+    b=request.session['shopify']
+    a=user.objects.get(shop=b['shop_url'])
+    # path='https://raw.githubusercontent.com/ardas/stripo-plugin/master/Public-Templates'
+    path='/static/FreeTemplate/Public-Templates/Basic-Templates'
+    # print os.path.dirname(__file__)
+    Btemplates=file_printer('./static/FreeTemplate/Public-Templates/Basic-Templates',0)
+    # Ctemplates=getsubdir('./home/templates/FreeTemplate/Public-Templates/Custom-Templates')
+    name,html,css =recentTemplate(a.id);
+    # print recent
+    return render_to_response('home/customTemplate.html',{'template1':Btemplates,'path':path,'recent':zip(name,html,css)},context_instance=RequestContext(request))
+
+
+
+def file_printer(root,flag):
+    files=[]
+    for root, dirs, files in os.walk(root):
+        if not flag:
+            return dirs    
+    return files
+
+def getsubdir(root):
+    d= file_printer(root,0)
+    z={}
+    for x in d:
+        z[x]=file_printer(root+"/"+x,0)
+    return z
+
+
+@shop_login_required
+def customTemplate(request):
+    tem=request.GET.get('template')
+    print tem
+    payload={
+            "pluginId":"1570debdcc6d4cf5858df30f75920525",
+            "secretKey":"e6e2704a4b384dd49771847d3859eb52"
+        }
+    
+    head={'content-type':'application/json'}
+    r=requests.post('https://plugins.stripo.email/api/v1/auth',data=json.dumps(payload),headers=head)
+    print json.loads(r.content)['token']
+    return render_to_response('home/stripo.html',{'template':tem,'rrr':json.loads(r.content)['token']},context_instance=RequestContext(request) )
+
+def save(request):
+    template={}
+    # print request.POST.get("html")
+    template['html']=request.POST.get("html")
+    template['css']=request.POST.get("css")
+    template['name']=request.POST.get("name")
+    b=request.session['shopify']
+    user_cur=user.objects.get(shop=b['shop_url'])
+    a,iscreated=templateData.objects.get_or_create(name=template['name'],uid=user_cur)
+    a.template=template
+    a.name=template['name']
+    a.save()
+    print a ,request;
+    return render_to_response('home/webhook.html',{'res':a.id},context_instance=RequestContext(request))
+
+def suscribers(request):
+    customList=getallCustomerEmails_without_key(request)
+    print customList
+    return render_to_response('home/suscribers.html',{'email':json.dumps(customList),'load_em':customList },context_instance=RequestContext(request) );
+
+# @shop_login_required
+def sendto(request):
+    b=request.session['shopify']
+    user_cur=user.objects.get(shop=b['shop_url'])
+    print user_cur
+    customList=getallCustomerEmails_without_key(request)
+    print customList
+    return render_to_response('home/sendtoform.html',{'user':user_cur,'email':json.dumps(customList) },context_instance=RequestContext(request) );
+
+def sendmailtosuscribers(request):
+    html=request.POST.get('htmlcss')
+    emailList = request.POST.get('email')
+    emailList = emailList.split(',')
+    subjectline= request.POST.get('subject')
+    preHeader = request.POST.get('preHeader')
+    from_ = request.POST.get('from')
+    senderName = request.POST.get('fromName')
+    t_id = request.POST.get('lt01')
+    state_active = request.POST.get('draft')
+    print emailList,subjectline,request.POST
+    b=request.session['shopify']
+    user_data=user.objects.get(shop=b['shop_url'])    
+    temp=templateData.objects.get(id=t_id)
+    if state_active!='draft':
+        send_mail(subject=subjectline,message='',from_email='anil@pushflew.com',recipient_list=emailList,html_message=html)
+    stat,c=statics.objects.get_or_create(name=subjectline,temp_id=temp,user_id=user_data.id)
+    stat.active=(state_active if state_active else "sent")
+    stat.count=len(emailList)
+    stat.sent_to=emailList;
+    stat.save()
+    return render_to_response('home/webhook.html',{'res':emailList},context_instance=RequestContext(request))
+    
+
+def sendmailto(request):
+    html=request.POST.get('htmlcss')
+    action = request.POST.get('action')
+    print action
+    if(action=='test_email'):
+        emailList = request.POST.get('email') 
+        print emailList
+        emailList=(emailList.split(','))
+        # print emailList[0],emailList[1]
+        # customer = getallCustomerEmails(request)
+        b=request.session['shopify']
+        user_data=user.objects.get(shop=b['shop_url'])
+        subjectline=user_data.subjectline
+    elif action == 'send_temp':
+        key = request.POST.get('tag')
+        val = request.POST.get('val')
+        val = val.split(',')
+        emailList = getallCustomerEmails(request,key,val)
+        subjectline= request.POST.get('subject')
+        print key,val,emailList,subjectline,request.POST    
+    if True:
+        send_mail(subject=subjectline,message='',from_email='anil@pushflew.com',recipient_list=emailList,html_message=html)
+        a=templateData(template=template,uid=user_cur,name=template['name'])
+        a.save()
+        stat=statics(name=subjectline,count=len(emailList),temp_id=a,user_id=user_data.id)
+    return render_to_response('home/webhook.html',{'email':emailList},context_instance=RequestContext(request))
+
+def getallCustomerEmails_without_key(request):
+    emailList=[]
+    a=request.session['shopify']
+    myToken = a['access_token']
+    myUrl = 'https://'+a['shop_url']+'/admin'
+    print myToken,myUrl
+    # head = {'Authorization': 'token {}'.format(myToken)}
+    head={'X-Shopify-Access-Token':myToken}
+    response = requests.get(myUrl+'/customers/count.json',headers=head)
+    totalCustomer=json.loads(response.content);
+    pages = math.ceil(totalCustomer['count']/50)
+    email=[]
+    for page in (1,pages+1):
+        response = requests.get(myUrl+'/customers.json?page='+str(page),headers=head);
+        cont=json.loads(response.content)
+        email=email+cont['customers']
+    return email    
+
+def getallCustomerEmails(request,key,val):
+    emailList=[]
+    a=request.session['shopify']
+    myToken = a['access_token']
+    myUrl = 'https://'+a['shop_url']+'/admin'
+    print myToken,myUrl
+    # head = {'Authorization': 'token {}'.format(myToken)}
+    head={'X-Shopify-Access-Token':myToken}
+    response = requests.get(myUrl+'/customers/count.json',headers=head)
+    totalCustomer=json.loads(response.content);
+    pages = math.ceil(totalCustomer['count']/50)
+    for page in (1,pages+1):
+        response = requests.get(myUrl+'/customers.json?page='+str(page),headers=head);
+        cont=json.loads(response.content)
+        for cust in cont['customers']:
+            flag=(False if key!='-1' else True) 
+            for k, v in cust.iteritems():
+                # print "is list===========",isinstance(v,list)
+                if( not flag):
+                    break
+                if isinstance(v,list):
+                    for x in v:
+                        # print x ,"print list item"
+                        if isinstance(x,dict):
+                            for k1, v1 in x.items():
+                                # print k1,v1,'list item'
+                                if(k1==key and (v1 in val)):
+                                    flag=True
+                                    break
+                        if(flag):
+                            break            
+
+                elif isinstance(v,dict):
+                    for k1, v1 in v.items():
+                        # print k1,v1,'dict item'
+                        if(k1==key and (v1 in val)):
+                            flag=True
+                            break 
+                else:
+                    # print k ,v,'origi'
+                    if(k==key and (v in val)):
+                        flag=True
+                        break
+                
+                if(flag):
+                    break
+                
+
+
+            if(flag):    
+                emailList.append(cust['email'])
+    print emailList            
+    return emailList;        
+
+
+def recentTemplate(id):
+    recent_tempaltes = templateData.objects.filter(uid = id)
+    print recent_tempaltes
+    resName=[]
+    resCss=[]
+    resHtml=[]
+    for x in recent_tempaltes:
+        # x=json.dumps(x)
+        a=json.loads(json.dumps(x.template))
+        a=ast.literal_eval(a)
+        resName.append((a["name"]))
+        resHtml.append((a["html"]))
+        resCss.append((a["css"]))
+    print resName
+    return resName,resHtml,resCss
+
